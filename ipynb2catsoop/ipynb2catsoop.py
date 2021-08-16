@@ -256,7 +256,8 @@ if 'get_ipython' in globals() and not (__name__=="__main__"):
 #-----------------------------------------------------------------------------
 # when run from command line
 
-if __name__=="__main__":
+def I2C_CommandLine():
+
     import argparse
     help_text = """usage: %prog [args...] notebook.ipynb"""
     parser = argparse.ArgumentParser(description=help_text, formatter_class=argparse.RawTextHelpFormatter)
@@ -268,4 +269,6 @@ if __name__=="__main__":
     args = parser.parse_args()
     i2c = ipynb2catsoop(args.unit_name, args.directory)
     i2c.convert(args.ifn)
-    
+
+if __name__=="__main__":
+    I2C_CommandLine()
