@@ -88,7 +88,10 @@ class ipynb2catsoop:
                 if self.verbose:
                     print("    " + str(cell)[:100])
                 ctype = cell['cell_type']
+                cell_md = cell.get('metadata', {})
                 if ctype=="markdown":
+                    if cell_md.get("id")=="view-in-github":	# skip "Open in Colab" at top of notebooks
+                        continue
                     mdout = self.fix_markdown(cell['source'])
                     fp.write(mdout + "\n\n")
                     continue
@@ -96,6 +99,8 @@ class ipynb2catsoop:
                     source = cell['source']
                     outputs = cell['outputs']
                     if source.startswith("# run this once at startup"):
+                        continue
+                    if source.startswith("# catsoop-ignore"):
                         continue
                     if source.count("ret = pythoncode_test(_i)"):
                         continue
