@@ -3,7 +3,9 @@ Python code / class to convert ipython / jupyter notebook to catsoop page
 '''
 
 import os
+import re
 import sys
+import glob
 import json
 import base64
 import logging
@@ -17,15 +19,61 @@ class ipynb2catsoop:
     '''
     Convert ipython / jupyter notebook to catsoop
     '''
-    def __init__(self, unit_name=None, course_dir=None, verbose=False):
+    def __init__(self, unit_name=None, course_dir=None, verbose=False, force_conversion=False):
         self.unit_name = unit_name
-        self.course_dir = course_dir
+        self.course_dir = os.path.abspath(course_dir)
         self.verbose = verbose
+        self.force_conversion = force_conversion
 
-    def convert(self, nbfn):
+    def convert_all(self, cdir):
+        '''
+        Convert all */*.ipynb files to */content.md 
+
+        Does this only if there is a single *.ipynb file in the directory
+        
+        cdir = (str) course content directory path
+        '''
+        cdir = os.path.abspath(cdir)
+        self.course_dir = cdir
+        if self.verbose:
+            print(f"[ipynb2catsoop] Converting all */*.ipynb files in {cdir}")
+        for unit_name in sorted(glob.glob(f"{cdir}/*")):
+            if not os.path.isdir(unit_name):
+                continue
+            self.convert_unit(unit_name)
+
+    def convert_unit(self, unit_name):
+        '''
+        Convert *.npynb file(s) in the specified unit_name directory
+        '''
+        if os.path.exists(f"{unit_name}/.ipynb2catsoop.ignore"):
+            return
+        nbfiles = list(glob.glob(f"{unit_name}/*.ipynb"))
+        to_convert = {}
+        if len(nbfiles)==0:
+            return
+        elif len(nbfiles)==1:
+            to_convert[nbfiles[0]] = f"{unit_name}/content.md"
+        else:
+            for nbfn in nbfiles:
+                to_convert[nbfn] = nbfn.replace(".ipynb", ".md")
+            
+        for nbfn, ofn in to_convert.items():
+            self.unit_name = os.path.basename(unit_name)
+            if (not self.force_conversion) and  os.path.exists(ofn) and os.path.getmtime(nbfn) < os.path.getmtime(ofn):
+                if self.verbose:
+                    print(f"    Skipping '{nbfn}' -- '{ofn}' already up to date")
+                continue
+            self.convert(nbfn, ofn=ofn)
+
+    def convert(self, nbfn, ofn=None):
+        '''
+        Convert notebook *.ipynb file to content.md, saved using the configured course content directory
+        '''
         odir = f"{self.course_dir}/{self.unit_name}"
         self.static_dir = f"{odir}/__STATIC__"
-        ofn = f"{odir}/content.md"
+        if not ofn:
+            ofn = f"{odir}/content.md"
 
         if self.verbose:
             print(f"[ipynb2catsoop] Converting python notebook '{nbfn}' to '{ofn}'")
@@ -37,10 +85,12 @@ class ipynb2catsoop:
         
         with open(ofn, 'w') as fp:
             for cnt, cell in enumerate(notebook.cells):
-                print(str(cell)[:200])
+                if self.verbose:
+                    print("    " + str(cell)[:100])
                 ctype = cell['cell_type']
                 if ctype=="markdown":
-                    fp.write(cell['source'] + "\n\n")
+                    mdout = self.fix_markdown(cell['source'])
+                    fp.write(mdout + "\n\n")
                     continue
                 elif ctype=='code':
                     source = cell['source']
@@ -76,7 +126,45 @@ class ipynb2catsoop:
                                 else:
                                     print(f"Warning: unknown content type {ctype} in cell number {cnt+1}: skipping")
                             
+    def fix_markdown(self, md):
+        '''
+        Fix markdown to match what is needed for catsoop.
+        Specifically. rewrite image source links
+        '''
+        mdout = re.sub("(<img [^>]+>)", self.fix_img_url, md)
+        return mdout
+
+    def fix_img_url(self, mo):
+        '''
+        Fix image URL, from using cwd to the catsoop static path, with CURRENT/
+        '''
+        html = mo.group(0)
+
+        def fix_url(umo):
+            url = umo.group(1)
+            if url.startswith("/") or url.startswith("CURRENT/"):
+                return f'src="{url}"'
+            self.ensure_static_file_copied(url)
+            return f'src="CURRENT/{url}"'
+            
+        fixed = re.sub("""src[ ]*=[ ]*["']([^'"]+)["']""", fix_url, html)
+        return fixed
         
+    def ensure_static_file_copied(self, fnb):
+        '''
+        Ensure {course_dir}/{unit_name}/{fnb} is sync'ed with {course_dir}/{unit_name}/__STATIC__/{fnb}
+        '''
+        sfn = f"{self.course_dir}/{self.unit_name}/{fnb}"
+        ddir = f"{self.course_dir}/{self.unit_name}/__STATIC__"
+        dfn = f"{ddir}/{fnb}"
+        if not os.path.exists(ddir):
+            os.mkdir(ddir)
+        if not os.path.exists(dfn) or os.path.getmtime(sfn) > os.path.getmtime(dfn):
+            cmd = f"cp '{sfn}' '{dfn}'"
+            if self.verbose:
+                print(f"        {cmd}")
+            os.system(cmd)
+
     def make_pythoncode_problem(self, celltext, verbose=False):
         optional_keys = ["csq_" + x for x in ['prompt']]
         required_keys = ["csq_" + x for x in ['initial', 'soln', 'tests']]
@@ -263,12 +351,19 @@ def I2C_CommandLine():
     parser = argparse.ArgumentParser(description=help_text, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("ifn", help="input ipython / jupyter notebook file")
     parser.add_argument('-v', "--verbose", help="verbose output", action="store_true")
-    parser.add_argument("-u", "--unit-name", type=str, help="catsoop unit name (subdir where content.md is to be stored", default="unit1")
+    parser.add_argument("-u", "--unit-name", type=str, help="catsoop unit name (subdir where content.md is to be stored); if unspecified, use current working dir",
+                        default=".")
     parser.add_argument("-d", "--directory", type=str, help="directory where course content is located", default=".")
+    parser.add_argument("--convert-all", action="store_true", help="convert all <inputfn>/*.ipynb notebooks, using <inputfn> as the course content directory")
+    parser.add_argument("--force", action="store_true", help="force conversion even if output is newer than input")
 
     args = parser.parse_args()
-    i2c = ipynb2catsoop(args.unit_name, args.directory)
-    i2c.convert(args.ifn)
+    i2c = ipynb2catsoop(args.unit_name, args.directory, verbose=args.verbose, force_conversion=args.force)
+
+    if args.convert_all:
+        i2c.convert_all(args.ifn)
+    else:
+        i2c.convert(args.ifn)
 
 if __name__=="__main__":
     I2C_CommandLine()
