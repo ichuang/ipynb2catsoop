@@ -215,7 +215,8 @@ class ipynb2catsoop:
         '''
         Run catsoop python code checker on the pythoncode problem with the given parameters
     
-        Returns dict with 
+        if return_csq is True, then returns dict with csq, form, and info; else returns grader output,
+        which is a dict with score and msg.
     
         submission = (str) code submission - nominally from student
         csq_soln = (str) staff code with the solution
