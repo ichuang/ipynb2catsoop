@@ -332,19 +332,29 @@ def pycode_equal(submission, solution):
     return submission == solution
 
 #-----------------------------------------------------------------------------
-# when loaded into an ipython / jypyter notebook
+# use in an ipython / jypyter notebook
 
-if 'get_ipython' in globals() and not (__name__=="__main__"):
+def init_catsoop():
+    with open("/tmp/config.py", 'w') as ofp:
+        ofp.write("cs_data_root='/tmp'\n")
+
     from catsoop import check as csm_check
-    import catsoop.loader as loader
     import catsoop.base_context as base_context
+    base_context.os.environ['CATSOOP_CONFIG'] = "/tmp/config.py"
+    import catsoop.loader as loader
     from IPython.display import display, HTML
     
+    globals()['csm_check'] = csm_check
+    globals()['base_context'] = base_context
+    globals()['loader'] = loader
+    globals()['display'] = display
+    globals()['HTML'] = HTML
+
     LOGGER = logging.getLogger("cs")
     LOGGER.disabled = False
     LOGGER.setLevel(1)
 
-    pythoncode_test = ipynb2catsoop.pythoncode_test            
+    globals()['pythoncode_test'] = ipynb2catsoop.pythoncode_test            
 
 #-----------------------------------------------------------------------------
 # when run from command line
