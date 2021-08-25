@@ -362,10 +362,13 @@ def init_catsoop():
 
     from catsoop import check as csm_check
     import catsoop.base_context as base_context
+    import importlib
     base_context.os.environ['CATSOOP_CONFIG'] = "/tmp/config.py"
+    base_context.cs_data_root = "/tmp"
     import catsoop.loader as loader
     from IPython.display import display, HTML
     
+    importlib.reload(loader)
     globals()['csm_check'] = csm_check
     globals()['base_context'] = base_context
     globals()['loader'] = loader
