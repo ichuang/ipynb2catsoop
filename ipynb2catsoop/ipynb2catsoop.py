@@ -385,6 +385,13 @@ def init_catsoop():
     LOGGER.setLevel(1)
 
     globals()['pythoncode_test'] = ipynb2catsoop.pythoncode_test            
+    context = {}
+    globals()['context'] = context
+    loader.load_global_data(context)
+    if 'tutor' in context:
+        print(f"[ipynb2catsoop.init_catsoop] success!")
+    else:
+        print(f"[ipynb2catsoop.init_catsoop] catsoop failed to initialize properly?  missing tutor - grading code probably will not work")
 
 #-----------------------------------------------------------------------------
 # when run from command line
