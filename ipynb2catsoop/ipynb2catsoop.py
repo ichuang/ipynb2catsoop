@@ -227,6 +227,9 @@ class ipynb2catsoop:
         csq_code_pre = (str) code pre-pended to submission (and solution?) before running
         verbose = (bool) if True, then print out final score (should be 1 if correct, or 0 if incorrect) and msg
         '''
+        if verbose > 1:
+            ipynb2catsoop.set_verbose_logging()
+            
         if not csq_submission:
             raise Exception("[pycode_question.do_submit] aborting: csq_submission is undefined!")
         if not csq_soln:
@@ -314,6 +317,24 @@ class ipynb2catsoop:
         except Exception as err:
             raise Exception(f"[pythoncode_test] aborting - could not evaluate csq_tests, got err={err}")
         return ipynb2catsoop.do_submit(return_csq=return_csq, **parameters)
+
+    @staticmethod
+    def set_verbose_logging():
+        '''
+        Make logger very verbose
+        '''
+        LOGGER = logging.getLogger("cs")
+        LOGGER.disabled = False
+        if getattr(LOGGER, 'verbose_catsoop_logging'):
+            return
+        LOGGER.setLevel(logging.DEBUG)
+        
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        LOGGER.addHandler(handler)
+        LOGGER.verbose_catsoop_logging = 1
 
 #-----------------------------------------------------------------------------
 
