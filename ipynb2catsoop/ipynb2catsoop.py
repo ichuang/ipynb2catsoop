@@ -361,10 +361,12 @@ def init_catsoop():
     with open(ccfn, 'w') as ofp:
         ofp.write("cs_data_root='/tmp'\n")
 
+    import os
+    os.environ['CATSOOP_CONFIG'] = ccfn
     from catsoop import check as csm_check
     import catsoop.base_context as base_context
     import importlib
-    base_context.os.environ['CATSOOP_CONFIG'] = ccfn
+    # base_context.os.environ['CATSOOP_CONFIG'] = ccfn
     base_context.cs_data_root = "/tmp"
     base_context.loader.base_context.config_loc = ccfn
     import catsoop.loader as loader
