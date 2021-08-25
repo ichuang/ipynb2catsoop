@@ -357,18 +357,21 @@ def pycode_equal(submission, solution):
 # use in an ipython / jypyter notebook
 
 def init_catsoop():
-    with open("/tmp/config.py", 'w') as ofp:
+    ccfn = "/tmp/config.py"
+    with open(ccfn, 'w') as ofp:
         ofp.write("cs_data_root='/tmp'\n")
 
     from catsoop import check as csm_check
     import catsoop.base_context as base_context
     import importlib
-    base_context.os.environ['CATSOOP_CONFIG'] = "/tmp/config.py"
+    base_context.os.environ['CATSOOP_CONFIG'] = ccfn
     base_context.cs_data_root = "/tmp"
+    base_context.loader.base_context.config_loc = ccfn
     import catsoop.loader as loader
     from IPython.display import display, HTML
     
     importlib.reload(loader)
+    loader.base_context = base_context
     globals()['csm_check'] = csm_check
     globals()['base_context'] = base_context
     globals()['loader'] = loader
