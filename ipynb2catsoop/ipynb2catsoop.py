@@ -406,6 +406,7 @@ def I2C_CommandLine():
     parser.add_argument("-u", "--unit-name", type=str, help="catsoop unit name (subdir where content.md is to be stored); if unspecified, use current working dir",
                         default=".")
     parser.add_argument("-d", "--directory", type=str, help="directory where course content is located", default=".")
+    parser.add_argument("-o", "--output-filename", type=str, help="name of output file (for single conversion - defaults to content.md if unspecified)", default=None)
     parser.add_argument("--convert-all", action="store_true", help="convert all <inputfn>/*.ipynb notebooks, using <inputfn> as the course content directory")
     parser.add_argument("--force", action="store_true", help="force conversion even if output is newer than input")
 
@@ -415,7 +416,7 @@ def I2C_CommandLine():
     if args.convert_all:
         i2c.convert_all(args.ifn)
     else:
-        i2c.convert(args.ifn)
+        i2c.convert(args.ifn, ofn=args.output_filename)
 
 if __name__=="__main__":
     I2C_CommandLine()
