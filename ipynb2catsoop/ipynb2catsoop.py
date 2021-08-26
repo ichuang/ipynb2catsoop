@@ -337,6 +337,28 @@ class ipynb2catsoop:
         LOGGER.addHandler(handler)
         LOGGER.verbose_catsoop_logging = 1
 
+    @staticmethod
+    def trigger_webhook(host=None, url=None, branch='master', repo_name='ipynb', verify=True):
+        '''
+        Send github-like webhook update to specified server, to trigger an ipynb2catsoop
+        conversion update (e.g. from files in github or google drive, on the catsoop server)
+        '''
+        if not 'requests' in globals():
+            import requests
+        headers = {'X-GitHub-Event': 'push'}
+        payload = {'ref': f"a/b/{branch}",
+                   'repository': {'name': repo_name},
+                   'deleted': False,
+        }
+        url = url or f"https://{host}/gitreload/"
+        ret = requests.post(url, json=payload, headers=headers, verify=verify)
+        try:
+            msg = ret.json()['all']['stdout']
+            print(msg)
+        except Exception as err:
+            pass
+        return ret
+
 #-----------------------------------------------------------------------------
 
 def pycode_equal(submission, solution):
