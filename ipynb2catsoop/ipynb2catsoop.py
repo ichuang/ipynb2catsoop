@@ -17,7 +17,8 @@ except Exception as err:
 
 class ipynb2catsoop:
     '''
-    Convert ipython / jupyter notebook to catsoop
+    Convert ipython / jupyter notebook to catsoop.
+    Handle pythoncode questions.
     '''
     def __init__(self, unit_name=None, course_dir=None, verbose=False, force_conversion=False):
         self.unit_name = unit_name
@@ -170,17 +171,15 @@ class ipynb2catsoop:
                 print(f"        {cmd}")
             os.system(cmd)
 
-    def make_pythoncode_problem(self, celltext, verbose=False, extra_keys=None):
+    def parse_cell_with_keys(self, celltext, verbose=False, keys=None):
         '''
-        Construct text giving catsoop code for pythoncode problem specified by celltext.
-        Returns dict with text: catsoop code text, parameters: dict of parsed parameter keys, values
+        Parse celltext, looking for lines which start with #csq_<key> and capturing strings which follow
+        as parameter defintions for catsoop.
 
-        celltext: (str) cell text string
-        extra_keys: (list) extra optional keys to include, e.g. 'submission'
+        Return parameter definition dict
+
+        keys: list of strings naming csq_<key> keys to be added to the parameter definition dict
         '''
-        optional_keys = ["csq_" + x for x in (['prompt', 'name'] + (extra_keys or [])) ]
-        required_keys = ["csq_" + x for x in ['initial', 'soln', 'tests'] ]
-        keys = optional_keys + required_keys
         mode = None
         parameters = { k: "" for k in keys }
         for line in celltext.split("\n"):		# grab parameters from cell text
@@ -195,7 +194,21 @@ class ipynb2catsoop:
             if mode:
                 parameters[mode] += line + '\n'
         if verbose:
-            print(json.dumps(parameters, indent=4))
+            print("[ipynb2catsoop.parse_cell_with_keys] parsed parameters =", json.dumps(parameters, indent=4))
+        return parameters
+
+    def make_pythoncode_problem(self, celltext, verbose=False, extra_keys=None):
+        '''
+        Construct text giving catsoop code for pythoncode problem specified by celltext.
+        Returns dict with text: catsoop code text, parameters: dict of parsed parameter keys, values
+
+        celltext: (str) cell text string
+        extra_keys: (list) extra optional keys to include, e.g. 'submission'
+        '''
+        optional_keys = ["csq_" + x for x in (['prompt', 'name'] + (extra_keys or [])) ]
+        required_keys = ["csq_" + x for x in ['initial', 'soln', 'tests'] ]
+        keys = optional_keys + required_keys
+        parameters = self.parse_cell_with_keys(celltext, verbose=verbose, keys=keys)
         for key in required_keys:
             if not parameters[key]:
                 raise Exception(f"[pythoncode_test] aborting - {key} undefined!")
