@@ -407,6 +407,7 @@ def init_catsoop():
     LOGGER.setLevel(1)
 
     globals()['pythoncode_test'] = ipynb2catsoop.pythoncode_test            
+    globals()['trigger_webhook'] = ipynb2catsoop.trigger_webhook
     context = {}
     globals()['context'] = context
     loader.load_global_data(context)
