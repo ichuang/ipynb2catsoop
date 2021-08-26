@@ -21,7 +21,7 @@ class ipynb2catsoop:
     '''
     def __init__(self, unit_name=None, course_dir=None, verbose=False, force_conversion=False):
         self.unit_name = unit_name
-        self.course_dir = os.path.abspath(course_dir)
+        self.course_dir = os.path.abspath(course_dir or ".")
         self.verbose = verbose
         self.force_conversion = force_conversion
 
@@ -170,9 +170,16 @@ class ipynb2catsoop:
                 print(f"        {cmd}")
             os.system(cmd)
 
-    def make_pythoncode_problem(self, celltext, verbose=False):
-        optional_keys = ["csq_" + x for x in ['prompt']]
-        required_keys = ["csq_" + x for x in ['initial', 'soln', 'tests']]
+    def make_pythoncode_problem(self, celltext, verbose=False, extra_keys=None):
+        '''
+        Construct text giving catsoop code for pythoncode problem specified by celltext.
+        Returns dict with text: catsoop code text, parameters: dict of parsed parameter keys, values
+
+        celltext: (str) cell text string
+        extra_keys: (list) extra optional keys to include, e.g. 'submission'
+        '''
+        optional_keys = ["csq_" + x for x in (['prompt', 'name'] + (extra_keys or [])) ]
+        required_keys = ["csq_" + x for x in ['initial', 'soln', 'tests'] ]
         keys = optional_keys + required_keys
         mode = None
         parameters = { k: "" for k in keys }
@@ -207,10 +214,11 @@ class ipynb2catsoop:
         catsoop_text.append( "csq_sandbox_options = {'do_rlimits': False}\n" )
         catsoop_text.append( "</question>\n\n" )
         catsoop_text = '\n'.join(catsoop_text)
-        return {'text': catsoop_text}
+        return {'text': catsoop_text,
+                'parameters': parameters,
+        }
 
-    @staticmethod
-    def do_submit(csq_submission=None, csq_soln="", csq_tests=None, csq_code_pre="",
+    def do_submit(self, csq_submission=None, csq_soln="", csq_tests=None, csq_code_pre="",
                   verbose=True, return_csq=False, **kwargs):
         '''
         Run catsoop python code checker on the pythoncode problem with the given parameters
@@ -229,7 +237,7 @@ class ipynb2catsoop:
         verbose = (bool) if True, then print out final score (should be 1 if correct, or 0 if incorrect) and msg
         '''
         if verbose > 1:
-            ipynb2catsoop.set_verbose_logging()
+            self.set_verbose_logging()
             
         if not csq_submission:
             raise Exception("[pycode_question.do_submit] aborting: csq_submission is undefined!")
@@ -280,13 +288,11 @@ class ipynb2catsoop:
             display(HTML(ret['msg']))
         return ret
     
-    @staticmethod
-    def pythoncode_test(celltext, verbose=False, return_csq=False):
+    def celltext_to_parameters_pythoncode(self, celltext, verbose=False):
         '''
-        Call this function with _i as the celltext argument, in a jupyter notebook cell,
-        to test the catsoop pythoncode problem defined in the previous cell.
+        Convert cell text (string) to parameters dict, for pythoncode problem.
         
-        The cell should be a code cell, and have the following comments, used to define the corresponding 
+        The celltext should have the following comments, used to define the corresponding 
         named catsoop pythoncode problem parameters:
     
         #csq_initial
@@ -294,33 +300,23 @@ class ipynb2catsoop:
         #csq_tests
         #csq_submission
         '''
-        keys = ["csq_" + x for x in ['initial', 'soln', 'tests', 'submission']]
-        mode = None
-        parameters = { k: "" for k in keys }
-        for line in celltext.split("\n"):		# grab parameters from cell text
-            line_done = False
-            for key in keys:
-                if line.startswith('#' + key):
-                    mode = key
-                    line_done = True
-                    break
-            if line_done:
-                continue
-            if mode:
-                parameters[mode] += line + '\n'
-        if verbose:
-            print(json.dumps(parameters, indent=4))
-        for key in keys:
-            if not parameters[key]:
-                raise Exception(f"[pythoncode_test] aborting - {key} undefined!")
+        pinfo = self.make_pythoncode_problem(celltext, extra_keys=['submission'])
+        parameters = pinfo['parameters']
         try:
             parameters['csq_tests'] = eval(parameters['csq_tests'])
         except Exception as err:
             raise Exception(f"[pythoncode_test] aborting - could not evaluate csq_tests, got err={err}")
-        return ipynb2catsoop.do_submit(return_csq=return_csq, **parameters)
+        return parameters
 
-    @staticmethod
-    def set_verbose_logging():
+    def pythoncode_test(self, celltext, verbose=False, return_csq=False):
+        '''
+        Call this function with _i as the celltext argument, in a jupyter notebook code cell,
+        to test the catsoop pythoncode problem defined in the previous cell.
+        '''
+        parameters = self.celltext_to_parameters_pythoncode(celltext, verbose=verbose)
+        return self.do_submit(return_csq=return_csq, **parameters)
+
+    def set_verbose_logging(self):
         '''
         Make logger very verbose
         '''
@@ -337,8 +333,7 @@ class ipynb2catsoop:
         LOGGER.addHandler(handler)
         LOGGER.verbose_catsoop_logging = 1
 
-    @staticmethod
-    def trigger_webhook(host=None, url=None, branch='master', repo_name='ipynb', verify=True):
+    def trigger_webhook(self, host=None, url=None, branch='master', repo_name='ipynb', verify=True):
         '''
         Send github-like webhook update to specified server, to trigger an ipynb2catsoop
         conversion update (e.g. from files in github or google drive, on the catsoop server)
@@ -406,8 +401,10 @@ def init_catsoop():
     LOGGER.disabled = False
     LOGGER.setLevel(1)
 
-    globals()['pythoncode_test'] = ipynb2catsoop.pythoncode_test            
-    globals()['trigger_webhook'] = ipynb2catsoop.trigger_webhook
+    I2C = ipynb2catsoop()
+    globals()['I2C'] = I2C
+    globals()['pythoncode_test'] = I2C.pythoncode_test            
+    globals()['trigger_webhook'] = I2C.trigger_webhook
     context = {}
     globals()['context'] = context
     loader.load_global_data(context)
