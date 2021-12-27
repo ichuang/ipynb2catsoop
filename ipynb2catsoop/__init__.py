@@ -1,2 +1,2 @@
-import catsoop2nb
-import ipynb2catsoop
+from . import catsoop2nb
+from . import ipynb2catsoop
