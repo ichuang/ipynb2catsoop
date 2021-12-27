@@ -9,14 +9,14 @@ with open("README.md", "r") as fh:
 
 setup(
     name='ipynb2catsoop',
-    version='0.0.2',
+    version='0.0.3',
     author='I. Chuang',
     author_email='ichuang@mit.edu',
     packages=['ipynb2catsoop'],
     scripts=[],
     url='https://github.com/ichuang/ipynb2catsoop',
     license='LICENSE',
-    description='Converter from ipython / jupyter notebook to catsoop',
+    description='Converter from and interface between ipython / jupyter notebook and catsoop',
     long_description=long_description,
     long_description_content_type="text/markdown",
     include_package_data=True,
