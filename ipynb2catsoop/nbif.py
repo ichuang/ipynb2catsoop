@@ -54,8 +54,8 @@ class catsoop_response:
         '''
         Authentication page
         '''
-        api_token = cs_user_info.get("api_token", "None")
-        username = cs_user_info.get("username", "None")
+        api_token = self.cs_user_info.get("api_token", "None")
+        username = self.cs_user_info.get("username", "None")
         
         js = 'console.log("hello from iframe");'
         js += '''window.parent.postMessage({api_token: "%s", username: "%s"}, '*');''' % (api_token, username)
@@ -78,7 +78,7 @@ class catsoop_response:
         js += js_chrome
         
         if self.cs_username=="None":
-            url = f"{cs_url_root}/{cs_course}/nbif?loginaction=login"
+            url = f"{self.cs_url_root}/{self.cs_course}/nbif?loginaction=login"
             html = f"please <a target='blank' href='{url}'>login</a>"
             html += f"<script type='text/javascript'>{js_chrome}</script></body>"
             self.the_context['cs_problem_spec'] = html
