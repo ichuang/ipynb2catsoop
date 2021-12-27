@@ -81,19 +81,19 @@ class CatsoopInterface:
         }
     });
     """    
-    def __init__(self, host=None, course=None, urlbase=None, do_register=True):
+    def __init__(self, host=None, course=None, urlbase=None):
         '''
         Initialize catsoop interface
         host = (str) catsoop hostname
         course = (str) catsoop course number or name
         urlbase = (str) base URL of catsoop instance, including path to course 
                         (used if host & course not specified)
-        do_register = (bool) register callback for js -- for google colab notebooks
         '''
         if host and course:
             urlbase = f"https://{host}/{course}"
         urlbase = urlbase or "https://localhost:6010/course"
         self.urlbase = urlbase
+        do_register = "google.colab" in str(get_ipython())	# register callback for js in google colab notebooks
         if do_register:
             import google.colab 
             google.colab.output.register_callback('notebook.cif_set_auth', 
