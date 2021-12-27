@@ -108,7 +108,7 @@ class CatsoopInterface:
         self.username = username
 
     def do_auth(self):
-        url = f"{self.urlbase}/nbauth"
+        url = f"{self.urlbase}/nbif?do=auth"
         html = f'''<script type="text/javascript">{self.JS_set_auth}</script>
                    <iframe src="{url}" width=700 height=350></iframe>'''
         return IPython.display.HTML(html)   
@@ -125,7 +125,7 @@ class CatsoopInterface:
         page = (str) catsoop page with questions
         csq_name = (str) name of question to display
         '''
-        url = f"{self.urlbase}/nbquestion?page={page}&csq_name={csq_name}"
+        url = f"{self.urlbase}/nbif?page={page}&csq_name={csq_name}"
         return IPython.display.HTML(f"""{self.JS_iframe_resize}
                     <iframe src='{url}' width='100%' height='50'></iframe>""")
 
