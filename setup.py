@@ -26,6 +26,7 @@ setup(
             ],
         },
     install_requires=['nbformat',
+                      'IPython',
                       ],
     package_dir={'ipynb2catsoop': 'ipynb2catsoop'},
     test_suite="ipynb2catsoop.test",

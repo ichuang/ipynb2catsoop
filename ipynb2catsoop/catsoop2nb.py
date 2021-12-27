@@ -1,3 +1,5 @@
+import IPython
+
 class CatsoopInterface:
     '''
     Interface between python notebook and Catsoop instance.
