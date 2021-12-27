@@ -170,6 +170,7 @@ class catsoop_response:
             context['cs_problem_spec'] = [this_problem_spec]
             context['cs_form'] = {}
             context["cs_footer"] = ""
+            context['cs_scripts'] += '<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/iframe-resizer/3.6.3/iframeResizer.contentWindow.min.js"></script>'
             context['cs_scripts'] += f'<script type="text/javascript">{self.JS_iframe_resize}</script>'
             context["cs_content_header"] = ''
             try:

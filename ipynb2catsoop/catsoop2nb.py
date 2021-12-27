@@ -46,7 +46,7 @@ class CatsoopInterface:
                 setTimeout(start_resize, 100);
                 return;
             }
-            iFrameResize({log:false, checkOrigin:false});
+            iFrameResize({log:true, checkOrigin:false});
         }
         try { start_resize(); }
         catch(err){ console.log("[iframe_resize_for_catsoop] error: ", err); }
