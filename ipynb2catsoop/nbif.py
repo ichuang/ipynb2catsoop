@@ -89,6 +89,46 @@ class catsoop_response:
             self.the_context['cs_problem_spec'] = html
         return
 
+    JS_iframe_resize = """
+        console.log("hello nbif");
+        var do_nbif_resize = function(){
+            if ( window.self !== window.top ) {
+        
+        	var body = document.body,
+        	    html = document.documentElement;
+        	
+        	var window_height = window.innerHeight;
+        	window.originalInnerHeight = window_height;
+        
+        	var myheight = Math.max( body.scrollHeight, body.offsetHeight, 
+        				 html.clientHeight, html.scrollHeight, html.offsetHeight );
+        	myheight += 0;
+        	var resize = function(){
+        	    if (!window.parent.postMessage){
+        		window.setTimeout(resize, 500);
+        		console.log("[nbif_iframe_resize] no postMessage yet!");
+        		return;
+        	    }		
+        	    console.log(`in iframe - doing resize, myheight=${myheight}, original height=${window.originalInnerHeight}`);
+        	    try {
+        		window.parent.postMessage(`{"subject":"lti.frameResize", "height":${myheight}}`, '*')
+        	    }
+        	    catch (err){
+        		console.log(`Error doing resize: ${err}`);
+        	    }
+        	}
+        	window.setTimeout(resize, 500);
+            }
+        };
+        
+        if (document.readyState === "complete" || (document.readyState !== "loading" && !document.documentElement.doScroll)) {
+            do_nbif_resize();
+        } else {
+            document.addEventListener("DOMContentLoaded", do_nbif_resize);
+        }
+
+    """
+
     def do_question_page(self, page, csq_name):
         '''
         Display single question
@@ -130,6 +170,7 @@ class catsoop_response:
             context['cs_problem_spec'] = [this_problem_spec]
             context['cs_form'] = {}
             context["cs_footer"] = ""
+            context['cs_scripts'] += f'<script type="text/javascript">{self.JS_iframe_resize}</script>'
             context["cs_content_header"] = ''
             try:
                 cs_handle_lti_page_modifications(context)
