@@ -92,8 +92,10 @@ class CatsoopInterface:
             urlbase = f"https://{host}/{course}"
         urlbase = urlbase or "https://localhost:6010/course"
         self.urlbase = urlbase
-        google.colab.output.register_callback('notebook.cif_set_auth', 
-                                              self.set_auth)
+        if do_register:
+            import google.colab 
+            google.colab.output.register_callback('notebook.cif_set_auth', 
+                                                  self.set_auth)
         return
 
     def set_auth(self, api_token, username):
