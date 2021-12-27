@@ -89,6 +89,8 @@ class CatsoopInterface:
         urlbase = (str) base URL of catsoop instance, including path to course 
                         (used if host & course not specified)
         '''
+        self.api_token = None
+        self.username = None
         if host and course:
             urlbase = f"https://{host}/{course}"
         urlbase = urlbase or "https://localhost:6010/course"
