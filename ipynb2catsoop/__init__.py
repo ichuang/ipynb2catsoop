@@ -1,0 +1,2 @@
+import catsoop2nb
+import ipynb2catsoop
