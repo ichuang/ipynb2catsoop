@@ -1,4 +1,7 @@
+import os
+import re
 import IPython
+from collections import defaultdict
 
 class CatsoopInterface:
     '''
@@ -13,6 +16,8 @@ class CatsoopInterface:
     within the notebook.  The student should first authenticate to the
     catsoop instance, e.g. by running a notebook cell with code like:
 
+      !pip3 install git+https://github.com/ichuang/ipynb2catsoop.git
+      from ipynb2catsoop.catsoop2nb import CatsoopInterface
       CIF = CatsoopInterface(host="catsoop.univ.edu/cat-soop", course="1.01")
       CIF.do_auth()
 
@@ -131,3 +136,163 @@ class CatsoopInterface:
         return IPython.display.HTML(f"""{self.JS_iframe_resize}
                     <iframe src='{url}' width='100%' height='50'></iframe>""")
 
+#-----------------------------------------------------------------------------
+
+class catsoop2ipynb:
+    '''
+    Convert catsoop markdown page to ipython / jupyter notebook
+    Questions are replaced with instantiations of links to the
+    specified catsoop server, using calls to a CatsoopInterface
+    instance.  Each question should have a csq_name specified,
+    for this linking to work reliably.
+    '''
+    def __init__(self, page=None, hostname=None, course=None, ofn=None, verbose=False):
+        '''
+        page = name of catsoop page to convert (will read <page>/content.md)
+        hostname = name of catsoop server (and port + path to catsoop instance, if needed) 
+        course = course number/name used as part of the path within the catsoop instance
+        ofn = output filename (defaults to <page>.ipynb)
+
+        hostname and course need to be specified for linking to questions
+        to work properly.
+        '''
+        self.page = page
+        self.hostname = hostname
+        self.verbose = verbose
+        self.course = course
+        self.ofn = ofn or f"{page}.ipynb"
+
+    def make_question_link(self, csq_name):
+        '''
+        Return python code call to CIF to instantiate link to given named problem
+        '''
+        code  = f"# Evaluate this cell to show the interactive problem named {csq_name}\n"
+        code += f'CIF.show_question("{self.page}", "{csq_name}")'
+        return code
+
+    def catsoop_interface_init_code(self):
+        '''
+        Return python code call to CIF which initializes authentication to catsoop server
+        (this is where the catsoop instance's hostname & course are needed)
+        '''
+        code  =  "# Evaluate this and the following cell once, each time you start using the notebook\n"
+        code +=  "# This code establishes an authenticated connection to the server used for interactive problems\n"
+        code +=  "\n"
+        code +=  "!pip3 install git+https://github.com/ichuang/ipynb2catsoop.git\n"
+        code +=  "from ipynb2catsoop.catsoop2nb import CatsoopInterface"
+
+        code2  =  "# Evaluate this cell to authenticate to the interactive problems server, after evaluating the cell above\n\n"
+        code2 += f'CIF = CatsoopInterface(host="{self.hostname}", course="{self.course}")\n'
+        code2 +=  'CIF.do_auth()'
+        return code, code2
+
+    def convert(self, catsoopfn=None):
+        '''
+        Generate <ofn> notebook file from <page>/content.md catsoop file
+        '''
+        import nbformat
+
+        catsoopfn = catsoopfn or f"{self.page}/content.md"
+        if not os.path.exists(catsoopfn):
+            raise Exception(f"[catssop2nb] Oops!  Cannot find catsoop file {catsoopfn} -- aborting")
+
+        if self.verbose:
+            print(f"[catsoop2nb] Converting catsoop {catsoopfn} to '{self.ofn}'")
+
+        with open(catsoopfn) as fp:
+            catsoopmd = fp.read()
+        
+        nb = nbformat.v4.new_notebook()
+
+        mode = None
+        text = []
+        qcode = None
+        nb['cells'] = []
+        unnamed_question_cnt = 0
+        counts = defaultdict(int)
+
+        def add_text_cell(text):
+            if not text:
+                return
+            if all([x=="" for x in text]):
+                return
+            if counts['n_markdown_cells']==1:	# after first text cell, add CIF init code block
+                code, code2 = self.catsoop_interface_init_code()
+                nb['cells'].append(nbformat.v4.new_code_cell(code))
+                nb['cells'].append(nbformat.v4.new_code_cell(code2))                
+            cell = nbformat.v4.new_markdown_cell('\n'.join(text))
+            nb['cells'].append(cell)
+            counts['n_markdown_cells'] += 1
+
+        for line in catsoopmd.split("\n"):
+            if line.count("<question"):
+                if text:
+                    add_text_cell(text)
+                    text = []
+                qcode = [line]
+                this_csq_name = None
+                mode = "qcode"
+                continue
+            if mode=='qcode':
+                qcode.append(line)
+                if line.startswith("csq_name"):
+                    env = {}
+                    exec(line, env)
+                    this_csq_name = env.get("csq_name")
+                if line.count("</question"):
+                    mode = None
+                    if not this_csq_name:
+                        this_csq_name = "q%06d" % unnamed_question_cnt
+                        unnamed_question_cnt += 1
+                    code = self.make_question_link(this_csq_name)
+                    nb['cells'].append(nbformat.v4.new_code_cell(code))
+                    counts['n_question_cells'] += 1
+            else:
+                pattab = {'section': '#',		# replace certain common catsoop XML with ipynb markdown
+                          'subsection': '##',
+                          'subsubsection': '###',
+                          }
+                skip = False
+                for pat, mdstr in pattab.items():
+                    m = re.match(f"<{pat}>([^<]+)</{pat}>", line)
+                    if m:
+                        add_text_cell(text)
+                        add_text_cell([f"{mdstr} {m.group(1)}"])
+                        text = []
+                        skip = True
+                        break
+                if not skip:
+                    text.append(line)
+            
+        if text:
+            add_text_cell(text)
+
+        with open(self.ofn, 'w') as ofp:
+            nbformat.write(nb, ofp)
+            if self.verbose:
+                print(f"Wrote python notebook file {self.ofn}")
+                print(f"    {counts['n_markdown_cells']} markdown cells and {counts['n_question_cells']} questions")
+                print(f"    catsoop server host={self.hostname}, course={self.course}, page={self.page}")
+
+#-----------------------------------------------------------------------------
+# when run from command line
+
+def C2I_CommandLine():
+
+    import argparse
+    help_text = """usage: %prog [args...] pagedir"""
+    parser = argparse.ArgumentParser(description=help_text, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("pagedir", help="input catsoop page directory (that has content.md)")
+    parser.add_argument('-v', "--verbose", help="verbose output", action="store_true")
+    parser.add_argument("--host", type=str, help="hostname of catsoop server (for question links)",
+                        default="localhost:6010")
+    parser.add_argument("-c", "--course", type=str, help="course number on catsoop server", default="1.01")
+    parser.add_argument("-o", "--output-filename", type=str, help="name of output file (defaults to <pagedir>.ipynb if unspecified)", default=None)
+
+    args = parser.parse_args()
+    c2i = catsoop2ipynb(args.pagedir, args.host, args.course, args.output_filename,
+                        verbose=args.verbose)
+    c2i.convert()
+
+if __name__=="__main__":
+    C2I_CommandLine()

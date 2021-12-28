@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ipynb2catsoop = ipynb2catsoop.ipynb2catsoop:I2C_CommandLine',
+            'catsoop2nb = ipynb2catsoop.catsoop2nb:C2I_CommandLine',
             ],
         },
     install_requires=['nbformat',

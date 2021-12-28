@@ -5,6 +5,7 @@ Instantiate this within a catsoop instance, at /nbif, using (within content.py):
     from ipynb2catsoop import nbif
     nbif.catsoop_response(globals())
 '''
+import json
 import logging
 
 class catsoop_response:
@@ -44,7 +45,7 @@ class catsoop_response:
         if do=="auth":
             return self.do_auth()
         if page:
-            return self.do_question_page(page, csq_name)
+            return self.do_question_page(page, csq_name, doaction=do)
 
         self.the_context['cs_handler'] = "raw_response"
         self.the_context['content_type'] = "text/html"
@@ -129,9 +130,15 @@ class catsoop_response:
 
     """
 
-    def do_question_page(self, page, csq_name):
+    def do_question_page(self, page, csq_name, doaction=None):
         '''
         Display single question
+
+        page = (str) name of catsoop page to load question from
+        csq_name = (str) catsoop question name -- should be unique to each question on a given page
+        doaction = (str) the <do> action requested in the HTTP GET urlargs or HTTP POST form
+                   If doaction is "list" then return a list of available problems on the given page.
+                   Otherwise return catsoop HTML for the specified question.
         '''
         from catsoop import loader, tutor, dispatch
         
@@ -157,12 +164,34 @@ class catsoop_response:
 
         # extract the problem spec with specified csq_name
         this_problem_spec = None
+        problem_names = []
         for elt in context["cs_problem_spec"]:
-            if not isinstance(elt, tuple):  # each elt is (problem_context, problem_kwargs)
+            if isinstance(elt, str):  
                 continue
+            # each elt is (problem_context, problem_kwargs)
             m = elt[1]
+            problem_names.append(m['csq_name'])
             if m['csq_name']==csq_name:
                 this_problem_spec = elt
+
+        if doaction=="debug":
+            html = ""
+            for elt in context["cs_problem_spec"]:
+                if isinstance(elt, str):
+                    html += f"<li><pre>{str(elt)[:100].replace('<','&lt;')}</pre><br/>"
+                else:
+                    html += f"<li><pre>{[ str(x)[:100].replace('<','&lt;') for x in elt]}</pre><br/>"
+            self.the_context['response'] = html
+            self.the_context['cs_handler'] = "raw_response"
+            self.the_context['content_type'] = "text/html"
+            return
+
+        if doaction=="list":
+            html = json.dumps({'problem_names': problem_names})
+            self.the_context['response'] = html
+            self.the_context['cs_handler'] = "raw_response"
+            self.the_context['content_type'] = "application/json"
+            return
 
         if not this_problem_spec:
             html = f"question with csq_name={csq_name} in page={page} not found"
