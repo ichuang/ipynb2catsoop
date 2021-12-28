@@ -1,5 +1,6 @@
 import os
 import re
+import string
 import IPython
 from collections import defaultdict
 
@@ -210,19 +211,22 @@ class catsoop2ipynb:
         nb['cells'] = []
         unnamed_question_cnt = 0
         counts = defaultdict(int)
+        section_index = defaultdict(int)
 
-        def add_text_cell(text):
+        def add_text_cell(text, is_not_section=True):
+            cell_metadata = {"trusted": True, "editable": False, "deletable": False}
             if not text:
                 return
             if all([x=="" for x in text]):
                 return
-            if counts['n_markdown_cells']==1:	# after first text cell, add CIF init code block
-                code, code2 = self.catsoop_interface_init_code()
-                nb['cells'].append(nbformat.v4.new_code_cell(code))
-                nb['cells'].append(nbformat.v4.new_code_cell(code2))                
-            cell = nbformat.v4.new_markdown_cell('\n'.join(text))
+            cell = nbformat.v4.new_markdown_cell('\n'.join(text), metadata=cell_metadata)
             nb['cells'].append(cell)
-            counts['n_markdown_cells'] += 1
+            if is_not_section:
+                counts['n_markdown_cells'] += 1
+                if counts['n_markdown_cells']==1:	# after first text cell, add CIF init code block
+                    code, code2 = self.catsoop_interface_init_code()
+                    nb['cells'].append(nbformat.v4.new_code_cell(code, metadata=cell_metadata))
+                    nb['cells'].append(nbformat.v4.new_code_cell(code2, metadata=cell_metadata))
 
         for line in catsoopmd.split("\n"):
             if line.count("<question"):
@@ -245,7 +249,8 @@ class catsoop2ipynb:
                         this_csq_name = "q%06d" % unnamed_question_cnt
                         unnamed_question_cnt += 1
                     code = self.make_question_link(this_csq_name)
-                    nb['cells'].append(nbformat.v4.new_code_cell(code))
+                    cell_metadata = {"trusted": True, "editable": False, "deletable": False}
+                    nb['cells'].append(nbformat.v4.new_code_cell(code, metadata=cell_metadata))
                     counts['n_question_cells'] += 1
             else:
                 pattab = {'section': '#',		# replace certain common catsoop XML with ipynb markdown
@@ -254,10 +259,32 @@ class catsoop2ipynb:
                           }
                 skip = False
                 for pat, mdstr in pattab.items():
-                    m = re.match(f"<{pat}>([^<]+)</{pat}>", line)
+                    m = re.match(f"<{pat}>([^<]*)</{pat}>", line)
                     if m:
-                        add_text_cell(text)
-                        add_text_cell([f"{mdstr} {m.group(1)}"])
+                        add_text_cell(text)		# add notebook cell with all text up to now
+                        def section_number_str(x, do_incr=False):
+                            if x=="section":
+                                if do_incr:
+                                    section_index[x] += 1
+                                    section_index['subsection'] = 0
+                                    section_index['subsubsection'] = 0
+                                if section_index[x]==0:
+                                    section_index[x] += 1
+                                return f"{section_index[x]}"
+                            if x=="subsection":
+                                if do_incr:
+                                    section_index['subsection'] += 1
+                                    section_index['subsubsection'] = 0
+                                if section_index[x]==0:
+                                    section_index[x] += 1
+                                letter = string.ascii_uppercase[section_index['subsection']-1]
+                                return f"{section_number_str('section')}{letter}"
+                            if x=="subsubsection":
+                                if do_incr:
+                                    section_index['subsubsection'] += 1
+                                return f"{section_number_str('subsection')}{section_index['subsubsection']}"
+                        add_text_cell([f"{mdstr} {section_number_str(pat, True)}. {m.group(1)}"],
+                                      is_not_section=False)
                         text = []
                         skip = True
                         break
