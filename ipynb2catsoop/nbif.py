@@ -202,6 +202,12 @@ class catsoop_response:
             context['cs_scripts'] += '<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/iframe-resizer/3.6.3/iframeResizer.contentWindow.min.js"></script>'
             context['cs_scripts'] += f'<script type="text/javascript">{self.JS_iframe_resize}</script>'
             context["cs_content_header"] = ''
+            if (not self.cs_username) or (self.cs_username=="None"):
+                 msg = 'Warning: you are not authenticated'
+                 url = f"{self.cs_url_root}/{self.cs_course}/nbif?do=auth&loginaction=login"
+                 msg += f"; please <a target='blank' href='{url}'>login</a> first."
+                 msg += f"<br/>You may also need to enable third-party cookies for {self.cs_url_root}"
+                 context["cs_content_header"] = msg
             try:
                 cs_handle_lti_page_modifications(context)
             except Exception as err:
