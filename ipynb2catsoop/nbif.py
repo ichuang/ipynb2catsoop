@@ -79,7 +79,7 @@ class catsoop_response:
         js += js_chrome
         
         if self.cs_username=="None":
-            url = f"{self.cs_url_root}/{self.cs_course}/nbif?loginaction=login"
+            url = f"{self.cs_url_root}/{self.cs_course}/nbif?do=auth&loginaction=login"
             html = f"please <a target='blank' href='{url}'>login</a>"
             html += f"<script type='text/javascript'>{js_chrome}</script></body>"
             self.the_context['cs_problem_spec'] = html
