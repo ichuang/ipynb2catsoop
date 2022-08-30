@@ -127,15 +127,16 @@ class CatsoopInterface:
         else:
             print(f"Authentication not yet established to {self.urlbase}")
 
-    def show_question(self, page="test_problems", csq_name="sum42"):
+    def show_question(self, page="test_problems", csq_name="sum42", height=50):
         '''
         Display specified (single) question in notebook output cell
         page = (str) catsoop page with questions
         csq_name = (str) name of question to display
+        height = (int) height of iframe where question is displayed
         '''
         url = f"{self.urlbase}/nbif?page={page}&csq_name={csq_name}"
         return IPython.display.HTML(f"""{self.JS_iframe_resize}
-                    <iframe src='{url}' width='100%' height='50'></iframe>""")
+                    <iframe src='{url}' width='100%' height='{height}'></iframe>""")
 
 #-----------------------------------------------------------------------------
 
